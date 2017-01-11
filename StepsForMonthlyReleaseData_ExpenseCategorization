@@ -1,0 +1,66 @@
+Steps for getting monthly release expense classification data
+
+(Note that Steps #1-2 have been automated in Jenkins under job 'expense-categorization_data' that runs the 1st day of each month)
+
+1. Run Pig script for generating company/user history files
+1) Pig script: PigScriptForExpenseHistoryCombined.pig
+
+2. Download all files from HDFS once Pig script finishes and put the files into inputdata folder for training model
+1) Put the OCR joined file under OCRDataSlim into inputdata folder (with filename $RawOCRFile)
+2) Put the company expense history file under ExpenseTypesCompanyTrain into inputdata folder (with filename $CompanyTypeCountTrain)
+3) Put the company expense history file under ExpenseTypesUserTrain into inputdata folder (with filename $UserTypeCountTrain)
+
+3. Make sure all required files are in inputdata folder prior to training an evaluation model to check on accuracy
+1) all_typeindex.json (this file defines the indices of DS types and pretty much stays constant unless a new DS type is added to the list)
+2) EnglishStopWords (this file contains a list of common English stop words to be filtered out during tokenization)
+3) ExpenseTypeMapping.tsv (this file captures keywords/key stems used to map from company expense type names to DS types)
+4) $RawOCRFile (raw OCR + Expense data file to train a new model)
+5) $CompanyTypeCountTrain needs to be renamed to CompanyTypeCount (this file has company counts and statistics on amount for each expense type)
+6) $UserTypeCountTrain needs to be renamed to UserTypeCount (this file has user counts for each expense type)
+7) BLD_Stats.json (this file has time statistics for breakfast, lunch, and dinner)
+
+4. Make sure in Mallet shell script mallet/bin/mallet, the heap size is sufficient
+e.g., MEMORY=4g
+
+5. Run python commands to train a mallet model per README file
+e.g., python3 expsCat.py -i 'OCRFebruary2015' -r 'all' -d '20150117' -o 'February2015TrainingOutput.txt' -w '-1'
+if $RawOCRFile == 'OCRFebruary2015' and we we are running on data retrieved on 02/02/2015 with the 14 most recent days reserved for testing
+
+6. Once the python command finishes running, check if the accuracy is between 50%-65% and also if the mallet model (MEclassifier.bin in mallet) has the current date as its timestamp
+Poor accuracy could be caused by failure to generate a new mallet model and hence an older model that mismatches with word indices is used
+Sometimes, heap overflowing error can lead to failure in generating new mallet model. In such a case, heap size needs to be increased per 4, or the training data size needs to be reduced (at most 5 months of data shall be used)
+
+7. Now we can start training a production model. Make sure all required files are in inputdata folder prior to training a production model
+1) all_typeindex.json
+2) EnglishStopWords
+3) ExpenseTypeMapping.tsv
+4) $RawOCRFile
+5) $CompanyTypeCount needs to be renamed to CompanyTypeCount
+6) $UserTypeCount needs to be renamed to UserTypeCount
+
+8. Run python commands to train a mallet model per README file
+e.g., python3 expsCat.py -i 'OCRFebruary2015' -r 'all' -d 'inf' -o 'February2015AllOutput.txt' -w '-1' -u '1'
+if $RawOCRFile == 'OCRFebruary2015' and we we are running on data retrieved on 02/02/2015. 
+Note that 'useTrainFlag' is set to 1 to use the same data in training for testing and also that the datesep needs to be set to a future date or 'inf' in order to use all data
+
+9. Once the python command finishes running, check the accuracy is higher than on the testing set in 7. Also confirm the mallet model (MEclassifier.bin in mallet) has the current date as its timestamp
+Poor accuracy could be caused by failure to generate a new mallet model and hence an older model that mismatches with word indices is used.
+
+10. Now we can start copying all the files needed for production into Couchbase. There are 8 files in total currently. 1) and 9) are from the inputdata folder; 8) is a constant file used only for amount extract, and not for model generation; and the rest are from the outputdata folder
+1) all_typeindex.json (this file defines the indices of DS types and usually stays constant unless a new DS type is added to the list)
+2) all_worddict.json (this file contains the indices of all the words selected for the model. It changes in each build and is essential for the model to run properly)
+3) CompanyExpenseAmt (this file has statistics on amount for each expense type. Needs to be updated for each build)
+4) compHist.tsv (this file has company expense history and counts. Needs to be updated for each build)
+5) MEclassifier.bin (this file is the binary Mallet model. It changes in each build, synchronously with all_worddict.json. It is necessary to make sure two files are updated in sync)
+6) userHist.tsv (this file has user expense history and counts. Needs to be updated for each build)
+7) UserVendorHist.tsv (this file has user's vendor history for meals types. Needs to be updated for each build)
+8) expense_receipt_amount_model_string.json (Steve's file. Stays constant for each build)
+9) BLD_Stats.json (this file has time statistics for breakfast, lunch, and dinner. Usually stays constant for each build)
+10) BLD_Types.json (this file has company expense types that are breakfast, lunch, or dinner. Needs to be updated for each build)
+
+11. Flush the air-sort bucket and load files in 10 to local Couchbase and verify testing curl commands still run correctly
+
+12. Upload files in 12 to HDFS production release directory for the next release
+
+Notes: although time feature has been added to reverse mapping logic. The above process does NOT utilize time as we have to extract time feature from each receipt using time token extraction API separately to get the data needed to use it
+
