@@ -169,4 +169,4 @@ class TimeExtractor:
 
 if __name__ == "__main__":
     te = TimeExtractor()
-    print(te.extract_time('test 1:46'))
+    print(te.extract_time(''))

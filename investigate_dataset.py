@@ -155,4 +155,5 @@ def run_all(file_name, max_lines=0):
 if __name__ == "__main__":
     # run_all(sys.argv[1])
     # run_all('sampledata2/sampled_Y_trainDS.pkl')
-    run_all('C:/Users/audreyc/PyCharm/octset')
+    # run_all('../ECTokenEval/token-test-dsreq_2016-07-07_1534')
+    run_all('error_analysis/dsreq-201701')

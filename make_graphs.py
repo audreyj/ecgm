@@ -137,7 +137,7 @@ class Remapper:
         for k, v in allowed_list.items():
             if v.startswith('z') or v.startswith('xx') or v.startswith('Z'):
                 continue
-            if DS_type_mapping.to_ds_types(k, v, self.type_order, self.type_dict) == pred:
+            if DS_type_mapping.to_ds_types(v, self.type_order, self.type_dict) == pred:
                 new_allowed_list[k] = v
 
         # Start off the point-giving by giving every category in the predicted DS type a big point boost.
@@ -374,7 +374,7 @@ def process_some(file_name, file_type=1):
 
             output = remap_class.remap(data_input)
 
-            data = json.dumps(data_input).encode('utf-8', 'ignore')
+            data = json.dumps(data_input)
             req = urllib.request.Request(ds_api_url, data, request_type)
             fangs_output = urllib.request.urlopen(req)
             t_str = fangs_output.read().decode('utf-8')
