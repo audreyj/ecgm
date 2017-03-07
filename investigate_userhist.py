@@ -28,6 +28,7 @@ with open(file_name, 'r', encoding='utf-8') as f:
     total_assessed = 0
     et_correct = 0
     et_inresponse = 0
+    et_same = 0
     for line in f:
         line_count += 1
         if line_count % 10000 == 0:

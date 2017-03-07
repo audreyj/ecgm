@@ -82,6 +82,7 @@ class ErrorAnalyzer:
         self.userid = 0
         self.amount = 0.0
         self.currency = 'USD'
+        self.location_country = ''
         self.datekey = 0
         self.exp_key = ''
         self.exp_name = ''
@@ -100,7 +101,9 @@ class ErrorAnalyzer:
     def process_skip(self):
         skip_command = 0
 
-        if self.entity != 'p0094495hc6x':
+        # if self.location_country not in ['FR', 'DE']:
+        #     skip_command = 1
+        if self.entity != 'p0055084fh8j':
             skip_command = 1
         # if userid not in user_search:
         #     skip_command = 1
@@ -223,7 +226,7 @@ class ErrorAnalyzer:
             self.amount = p[5]
             location_city = p[6]
             location_state = p[7]
-            location_country = p[8]
+            self.location_country = p[8]
             self.vendor = p[9]
             self.exp_name = p[10]
             self.exp_key = p[11]
@@ -314,16 +317,6 @@ class ErrorAnalyzer:
                 self.my_exp_key = output['expenseTypes'][0]['value']
                 self.count_histories(output)
 
-                if pause_points:
-                    for et in self.all_exp_types_dict[self.entity]:
-                        print(et['ExpKey'], ', ', et['Name'])
-                    print(output['expenseTypes'])
-                    print("My ExpenseType guess: %s" % self.my_exp_key)
-                    print("Real Expense Type: %s, %s" % (self.exp_key, self.exp_name))
-                    print(self.vendor)
-                    print(self.ocr_text)
-                    input('----- pause ------')
-
                 if self.entity not in company_dict.keys():
                     company_dict[self.entity] = Counter()
                     company_types[self.entity] = Counter()
@@ -336,12 +329,23 @@ class ErrorAnalyzer:
                     et_correct += 1
                     company_dict[self.entity]['et correct'] += 1
 
+                if pause_points:
+                    for et in self.all_exp_types_dict[self.entity]:
+                        print(et['ExpKey'], ', ', et['Name'])
+                    print("Number of expense types: ", len(self.all_exp_types_dict[self.entity]))
+                    print("My output: ", output['expenseTypes'])
+                    print("Real Expense Type: %s, %s" % (self.exp_key, self.exp_name))
+                    print(self.vendor)
+                    print(self.ocr_text)
+                    input('----- pause ------')
+
         print("total lines: %d" % self.line_count)
         print(self.skip_reasons)
         print("total assessed: %d" % total_assessed)
+        print("total et correct: %d" % et_correct)
 
         # self.write_out_files(company_dict, type_order, type_dict)
-        print(company_dict)
+        print(company_dict[self.entity])
 
     def run_all(self, file_name, file_type='audrey', max_lines=0):
         """
